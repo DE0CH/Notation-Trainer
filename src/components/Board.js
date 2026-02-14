@@ -200,13 +200,16 @@ class Board extends Component {
     }
   }
 
-  // Only allow correct colored pieces to be dragged
+  // When drag starts, leave PIECE_SELECTED (clear selection). Only our pieces are draggable.
   allowDrag = ({ piece }) => {
-    if (piece.charAt(0) === this.state.nextMoveData.color) {
-      return true;
-    } else {
-      return false;
+    if (this.state.selectedSquare) {
+      const { initMoveData } = this.state;
+      const baseStyles = initMoveData.from && initMoveData.to
+        ? { [initMoveData.from]: GREEN_SQUARE_STYLE, [initMoveData.to]: GREEN_SQUARE_STYLE }
+        : {};
+      this.setState({ selectedSquare: '', squareStyles: baseStyles });
     }
+    return piece.charAt(0) === this.state.nextMoveData.color;
   }
 
   // Click-to-place: state machine
@@ -232,7 +235,6 @@ class Board extends Component {
     const clickedPiece = !clickedEmpty;
     const myColor = nextMoveData.color;
     const clickedPieceIsMine = clickedPiece && clickedPieceObj.color === myColor;
-    const clickedPieceIsOpponent = clickedPiece && clickedPieceObj.color !== myColor;
 
     let stateUpdate = null;
 
@@ -310,16 +312,18 @@ class Board extends Component {
         <Timer 
           time={this.state.time - this.state.timerCount} 
           display={this.props.timed ? 'block' : 'none'} />
-        <Chessboard
-          position={this.state.fen} 
-          squareStyles={this.state.squareStyles}
-          onDrop={this.onDrop}
-          onSquareClick={this.onSquareClick}
-          allowDrag={this.allowDrag} 
-          showNotation={this.props.showNotation} 
-          orientation={this.props.orientation === 'random' ? this.state.orientation : this.props.orientation}
-          calcWidth={this.props.calcWidth}
-          />
+        <div className={this.state.selectedSquare ? 'normal-cursor' : undefined}>
+          <Chessboard
+            position={this.state.fen} 
+            squareStyles={this.state.squareStyles}
+            onDrop={this.onDrop}
+            onSquareClick={this.onSquareClick}
+            allowDrag={this.allowDrag} 
+            showNotation={this.props.showNotation} 
+            orientation={this.props.orientation === 'random' ? this.state.orientation : this.props.orientation}
+            calcWidth={this.props.calcWidth}
+            />
+        </div>
         <div 
         id='movePrompt' >
           {this.state.nextMoveColor === 'White' ? <FontAwesomeIcon icon={whiteCircle} /> : <FontAwesomeIcon icon={blackCircle} />}   

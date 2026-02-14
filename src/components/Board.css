@@ -1,3 +1,9 @@
+/* Use normal pointer cursor (e.g. when picking a target so opponent squares don’t show not-allowed) */
+.normal-cursor,
+.normal-cursor * {
+  cursor: pointer !important;
+}
+
 #movePrompt {
     font-size: 40px;
     text-align: center;
