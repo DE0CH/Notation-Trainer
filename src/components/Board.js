@@ -10,6 +10,20 @@ import './Board.css';
 const game = new Chess();
 const orientations = ['white', 'black'];
 
+const SelectionState = Object.freeze({
+  BEGINNING: 'beginning',
+  PIECE_SELECTED: 'pieceSelected'
+});
+
+const ValidationResult = Object.freeze({
+  CORRECT: 'correct',
+  INCORRECT: 'incorrect',
+  NO_OP: 'noOp'
+});
+
+const GREEN_SQUARE_STYLE = Object.freeze({ backgroundColor: 'rgba(0, 255, 0, 0.3)' });
+const YELLOW_SQUARE_STYLE = Object.freeze({ backgroundColor: 'rgba(255, 255, 0, 0.5)' });
+
 class Board extends Component {
 
   constructor(props) {
@@ -25,6 +39,7 @@ class Board extends Component {
       history: [],
       nextMoveColor: '',
       squareStyles: {},
+      selectedSquare: '',
       answer: '',
       correctMoves: 0,
       time: 60,
@@ -129,6 +144,7 @@ class Board extends Component {
       history: history,
       nextMoveColor: lastFullMove.color === 'w' ? 'White' : 'Black',
       squareStyles: {},
+      selectedSquare: '',
       answer: '',
       orientation: orientation
     });
@@ -145,35 +161,43 @@ class Board extends Component {
     this.setState({ fen: game.fen(), initMoveData: initMoveData, nextMoveData: nextMoveData });
   }
 
-  // For initMove colors
+  // Green = last move (initMove), so we don't give away the answer
   updateSquareStyling = () => {
-    console.log(this.state);
     let squareStyles = {};
-    squareStyles[this.state.initMoveData.from] = {backgroundColor: 'rgba(0, 255, 0, 0.3)'};
-    squareStyles[this.state.initMoveData.to] = {backgroundColor: 'rgba(0, 255, 0, 0.3)'};
+    squareStyles[this.state.initMoveData.from] = GREEN_SQUARE_STYLE;
+    squareStyles[this.state.initMoveData.to] = GREEN_SQUARE_STYLE;
     this.setState({ squareStyles: squareStyles });
   }
 
-  // Validate user move input
+  // Pure validation: returns ValidationResult.
+  validateUserMove = (fromSquare, toSquare, piece) => {
+    if (fromSquare === toSquare) return ValidationResult.NO_OP;
+    const { nextMoveData } = this.state;
+    const expectedPiece = nextMoveData.color + nextMoveData.piece.toUpperCase();
+    if (
+      nextMoveData.from === fromSquare &&
+      nextMoveData.to === toSquare &&
+      expectedPiece === piece
+    ) {
+      return ValidationResult.CORRECT;
+    }
+    return ValidationResult.INCORRECT;
+  }
+
   onDrop = ({ sourceSquare, targetSquare, piece }) => {
-    if (this.state.nextMoveData.from === sourceSquare 
-       && this.state.nextMoveData.to === targetSquare
-       && (this.state.nextMoveData.color + this.state.nextMoveData.piece.toUpperCase()) === piece) {
-        if(!this.props.timed) {
-          this.props.callbackDisableSettings(true);
-        }
-        game.move(this.state.nextMove); 
-        this.setState({ 
-          answer: 'correct', 
-          fen: game.fen(), 
-          correctMoves: this.state.correctMoves+1,
-          correct: true
-        });
-       } else if (sourceSquare === targetSquare) {
-        // Skip if piece is dropped onto original square
-       } else {
-         this.setState({ answer: 'incorrect', incorrect: true });
-       }
+    const result = this.validateUserMove(sourceSquare, targetSquare, piece);
+    if (result === ValidationResult.CORRECT) {
+      if (!this.props.timed) this.props.callbackDisableSettings(true);
+      game.move(this.state.nextMove);
+      this.setState({
+        answer: 'correct',
+        fen: game.fen(),
+        correctMoves: this.state.correctMoves + 1,
+        correct: true
+      });
+    } else if (result === ValidationResult.INCORRECT) {
+      this.setState({ answer: 'incorrect', incorrect: true });
+    }
   }
 
   // Only allow correct colored pieces to be dragged
@@ -182,6 +206,81 @@ class Board extends Component {
       return true;
     } else {
       return false;
+    }
+  }
+
+  // Click-to-place: state machine
+  // States: BEGINNING (no selection), PIECE_SELECTED (a piece square is selected)
+  // Transitions: beginning + piece clicked → pieceSelected; pieceSelected + same square → beginning;
+  //              pieceSelected + other piece → pieceSelected (switch); pieceSelected + empty square → beginning (+ correct/incorrect)
+  onSquareClick = (square) => {
+    const { initMoveData, nextMoveData, selectedSquare, squareStyles } = this.state;
+    // Green highlight = last move (don't give away answer)
+    const baseFrom = initMoveData.from;
+    const baseTo = initMoveData.to;
+    // Validation = next move (the one we're asking the user to play)
+    const from = nextMoveData.from;
+    const to = nextMoveData.to;
+
+    if (!from || !to) return;
+
+    const baseStyles = { [baseFrom]: GREEN_SQUARE_STYLE, [baseTo]: GREEN_SQUARE_STYLE };
+
+    const currentState = selectedSquare === '' ? SelectionState.BEGINNING : SelectionState.PIECE_SELECTED;
+    const clickedPieceObj = game.get(square);
+    const clickedEmpty = !clickedPieceObj;
+    const clickedPiece = !clickedEmpty;
+    const myColor = nextMoveData.color;
+    const clickedPieceIsMine = clickedPiece && clickedPieceObj.color === myColor;
+    const clickedPieceIsOpponent = clickedPiece && clickedPieceObj.color !== myColor;
+
+    let stateUpdate = null;
+
+    if (currentState === SelectionState.BEGINNING) {
+      if (clickedPieceIsMine) {
+        stateUpdate = {
+          selectedSquare: square,
+          squareStyles: { ...squareStyles, [square]: YELLOW_SQUARE_STYLE }
+        };
+      }
+    } else {
+      // currentState === PIECE_SELECTED
+      if (square === selectedSquare) {
+        stateUpdate = { selectedSquare: '', squareStyles: baseStyles };
+      } else if (clickedPieceIsMine) {
+        stateUpdate = {
+          selectedSquare: square,
+          squareStyles: { ...baseStyles, [square]: YELLOW_SQUARE_STYLE }
+        };
+      } else {
+        // empty square or opponent piece clicked → validate move (capture counts as target)
+        const pieceObj = game.get(selectedSquare);
+        const pieceStr = pieceObj ? pieceObj.color + pieceObj.type.toUpperCase() : '';
+        const result = this.validateUserMove(selectedSquare, square, pieceStr);
+        if (result === ValidationResult.CORRECT) {
+          if (!this.props.timed) this.props.callbackDisableSettings(true);
+          game.move(this.state.nextMove);
+          stateUpdate = {
+            selectedSquare: '',
+            answer: 'correct',
+            fen: game.fen(),
+            correctMoves: this.state.correctMoves + 1,
+            correct: true,
+            squareStyles: baseStyles
+          };
+        } else {
+          stateUpdate = {
+            selectedSquare: '',
+            answer: 'incorrect',
+            incorrect: true,
+            squareStyles: baseStyles
+          };
+        }
+      }
+    }
+
+    if (stateUpdate !== null) {
+      this.setState(stateUpdate);
     }
   }
 
@@ -215,6 +314,7 @@ class Board extends Component {
           position={this.state.fen} 
           squareStyles={this.state.squareStyles}
           onDrop={this.onDrop}
+          onSquareClick={this.onSquareClick}
           allowDrag={this.allowDrag} 
           showNotation={this.props.showNotation} 
           orientation={this.props.orientation === 'random' ? this.state.orientation : this.props.orientation}
