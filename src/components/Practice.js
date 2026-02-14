@@ -35,9 +35,9 @@ class Practice extends Component {
   render() {
     return (
       <div>
-        <div class='button-container'>
+        <div className='button-container'>
           <Link to='/'>
-            <button class='back-button'>Back</button>
+            <button className='back-button'>Back</button>
           </Link>
         </div>
         <Board 

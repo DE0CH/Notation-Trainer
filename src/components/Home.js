@@ -25,7 +25,7 @@ class Home extends Component {
 
       case 'init': 
         return (
-          <div class="init-container">
+          <div className="init-container">
             Chess Notation Trainer
             <Chessboard 
             draggable={false}
@@ -34,12 +34,12 @@ class Home extends Component {
             showNotation={this.state.showNotation}
             calcWidth={calcWidth}
             />
-            <button class='start button' onClick={this.handleStart}>Start</button>|
+            <button className='start button' onClick={this.handleStart}>Start</button>|
             <Link to='/practice'>
-              <button class='practice button'>Practice</button>
+              <button className='practice button'>Practice</button>
             </Link>|
             <Link to='/about'>
-              <button class='about button'>About</button>
+              <button className='about button'>About</button>
             </Link>
           </div>
         );
@@ -58,7 +58,7 @@ class Home extends Component {
 
       case 'ended': 
         return (
-          <div class="ended-container" >
+          <div className="ended-container" >
             Score: {this.state.correctMoves} Moves
             <Chessboard 
             {...this.state.finalBoardProps}
@@ -66,16 +66,18 @@ class Home extends Component {
             showNotation={this.state.showNotation} 
             calcWidth={calcWidth}
             />
-            <button class='start button' onClick={this.handleStart}>Start</button>|
+            <button className='start button' onClick={this.handleStart}>Start</button>|
             <Link to='/practice'>
-              <button class='practice button'>Practice</button>
+              <button className='practice button'>Practice</button>
             </Link>|
             <Link to='/about'>
-              <button class='about button'>About</button>
+              <button className='about button'>About</button>
             </Link>
           </div>
         );
 
+      default:
+        return null;
     }
   }
 

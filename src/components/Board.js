@@ -1,12 +1,13 @@
 import React, { Component } from 'react';
 import Chessboard from "chessboardjsx";
-import * as Chess from 'chess.js';
+import * as ChessModule from 'chess.js';
 import PGNData from '../PGN/outfile.json';
 import { faCircle as blackCircle } from "@fortawesome/free-solid-svg-icons";
 import { faCircle as whiteCircle } from "@fortawesome/free-regular-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import './Board.css';
 
+const Chess = ChessModule.Chess || ChessModule.default;
 const game = new Chess();
 const orientations = ['white', 'black'];
 
@@ -140,7 +141,6 @@ class Board extends Component {
       initMoveData: {},
       nextMove: nextMove,
       nextMoveData: {},
-      nextMoveColor: '',
       history: history,
       nextMoveColor: lastFullMove.color === 'w' ? 'White' : 'Black',
       squareStyles: {},
@@ -342,7 +342,7 @@ class Board extends Component {
 function Timer(props) {
   return (
     <div 
-      class="timer-container" 
+      className="timer-container" 
       style={props.time < 10 ? {color: 'red', display: props.display} : {display: props.display}} >
       <div>{props.time}</div>
     </div>
